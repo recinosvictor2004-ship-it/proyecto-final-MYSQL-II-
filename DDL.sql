@@ -125,3 +125,12 @@ CREATE TABLE auditoria_logins (
     ip VARCHAR(50),
     descripcion TEXT
 );
+
+-- Carritos de compras
+CREATE TABLE carritos (
+    id_carrito INT AUTO_INCREMENT PRIMARY KEY,
+    id_cliente INT NOT NULL,
+    estado VARCHAR(50),
+    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
+);
