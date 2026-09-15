@@ -43,7 +43,7 @@ SELECT
 FROM ventas
 GROUP BY año, mes
 ORDER BY año, mes;
-
+ALTER TABLE ventas ADD total DECIMAL(10,2) DEFAULT 0;
 
 -- 5. Crecimiento de Clientes 
 SELECT 
@@ -53,6 +53,7 @@ SELECT
 FROM clientes
 GROUP BY año, trimestre
 ORDER BY año, trimestre;
+ALTER TABLE clientes ADD fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP;
 
 
 -- 6. Tasa de Compra Repetida
