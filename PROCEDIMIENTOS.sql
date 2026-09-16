@@ -95,7 +95,7 @@ END$$
 -- 7. sp_CrearVenta
 CREATE PROCEDURE sp_CrearVenta (
     IN p_id_cliente INT,
-    IN p_estado ENUM('Pendiente de Pago','Procesando','Enviado','Entregado','Cancelado')
+    IN p_estado VARCHAR(20)
 )
 BEGIN
     INSERT INTO ventas (id_cliente, estado)
@@ -126,7 +126,7 @@ END$$
 -- 10. sp_ActualizarEstadoVenta
 CREATE PROCEDURE sp_ActualizarEstadoVenta (
     IN p_id_venta INT,
-    IN p_estado ENUM('Pendiente de Pago','Procesando','Enviado','Entregado','Cancelado')
+    IN p_estado VARCHAR(20)
 )
 BEGIN
     UPDATE ventas
