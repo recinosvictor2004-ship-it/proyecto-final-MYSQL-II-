@@ -3,39 +3,7 @@
 -- Triggers del proyecto PROYECTO_FINAL
 -- ============================================
 
--- TABLA DE AUDITORÍA DE CAMBIOS DE PRECIO
-CREATE TABLE log_cambios_precio (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    id_producto INT,
-    precio_anterior DECIMAL(10,2),
-    precio_nuevo DECIMAL(10,2),
-    fecha DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- TABLA DE AUDITORÍA DE STOCK
-CREATE TABLE log_stock (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    id_producto INT,
-    stock_anterior INT,
-    stock_nuevo INT,
-    fecha DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- TABLA DE AUDITORÍA DE CLIENTES
-CREATE TABLE log_clientes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    id_cliente INT,
-    accion VARCHAR(50),
-    fecha DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- TABLA DE AUDITORÍA DE VENTAS
-CREATE TABLE log_ventas (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    id_venta INT,
-    accion VARCHAR(50),
-    fecha DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+DELIMITER $$
 
 -- ============================================
 -- 1. Auditoría de cambios de precio
@@ -48,7 +16,7 @@ BEGIN
         INSERT INTO log_cambios_precio (id_producto, precio_anterior, precio_nuevo)
         VALUES (OLD.id_producto, OLD.precio, NEW.precio);
     END IF;
-END;
+END$$
 
 -- ============================================
 -- 2. Auditoría de cambios de stock
@@ -61,7 +29,7 @@ BEGIN
         INSERT INTO log_stock (id_producto, stock_anterior, stock_nuevo)
         VALUES (OLD.id_producto, OLD.stock, NEW.stock);
     END IF;
-END;
+END$$
 
 -- ============================================
 -- 3. Actualizar total de venta automáticamente
@@ -71,11 +39,13 @@ AFTER INSERT ON detalle_ventas
 FOR EACH ROW
 BEGIN
     UPDATE ventas
-    SET total = (SELECT SUM(cantidad * precio_unitario_congelado)
-                 FROM detalle_ventas
-                 WHERE id_venta = NEW.id_venta)
+    SET total = (
+        SELECT SUM(cantidad * precio_unitario_congelado)
+        FROM detalle_ventas
+        WHERE id_venta = NEW.id_venta
+    )
     WHERE id_venta = NEW.id_venta;
-END;
+END$$
 
 -- ============================================
 -- 4. Recalcular total si se elimina un detalle
@@ -85,11 +55,13 @@ AFTER DELETE ON detalle_ventas
 FOR EACH ROW
 BEGIN
     UPDATE ventas
-    SET total = (SELECT IFNULL(SUM(cantidad * precio_unitario_congelado),0)
-                 FROM detalle_ventas
-                 WHERE id_venta = OLD.id_venta)
+    SET total = (
+        SELECT IFNULL(SUM(cantidad * precio_unitario_congelado), 0)
+        FROM detalle_ventas
+        WHERE id_venta = OLD.id_venta
+    )
     WHERE id_venta = OLD.id_venta;
-END;
+END$$
 
 -- ============================================
 -- 5. Evitar ventas con stock insuficiente
@@ -102,7 +74,7 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Stock insuficiente para realizar la venta';
     END IF;
-END;
+END$$
 
 -- ============================================
 -- 6. Descontar stock automáticamente al vender
@@ -114,7 +86,7 @@ BEGIN
     UPDATE productos
     SET stock = stock - NEW.cantidad
     WHERE id_producto = NEW.id_producto;
-END;
+END$$
 
 -- ============================================
 -- 7. Reponer stock si se elimina un detalle
@@ -126,7 +98,7 @@ BEGIN
     UPDATE productos
     SET stock = stock + OLD.cantidad
     WHERE id_producto = OLD.id_producto;
-END;
+END$$
 
 -- ============================================
 -- 8. Auditoría de creación de clientes
@@ -137,7 +109,7 @@ FOR EACH ROW
 BEGIN
     INSERT INTO log_clientes (id_cliente, accion)
     VALUES (NEW.id_cliente, 'Cliente creado');
-END;
+END$$
 
 -- ============================================
 -- 9. Auditoría de eliminación de clientes
@@ -148,7 +120,7 @@ FOR EACH ROW
 BEGIN
     INSERT INTO log_clientes (id_cliente, accion)
     VALUES (OLD.id_cliente, 'Cliente eliminado');
-END;
+END$$
 
 -- ============================================
 -- 10. Auditoría de creación de ventas
@@ -159,7 +131,7 @@ FOR EACH ROW
 BEGIN
     INSERT INTO log_ventas (id_venta, accion)
     VALUES (NEW.id_venta, 'Venta creada');
-END;
+END$$
 
 -- ============================================
 -- 11. Auditoría de eliminación de ventas
@@ -170,7 +142,7 @@ FOR EACH ROW
 BEGIN
     INSERT INTO log_ventas (id_venta, accion)
     VALUES (OLD.id_venta, 'Venta eliminada');
-END;
+END$$
 
 -- ============================================
 -- 12. Validar que el precio no sea negativo
@@ -183,7 +155,7 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'El precio debe ser mayor a 0';
     END IF;
-END;
+END$$
 
 -- ============================================
 -- 13. Validar que el costo no sea negativo
@@ -196,7 +168,7 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'El costo no puede ser negativo';
     END IF;
-END;
+END$$
 
 -- ============================================
 -- 14. Validar que el stock no sea negativo
@@ -209,20 +181,20 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'El stock no puede ser negativo';
     END IF;
-END;
+END$$
 
 -- ============================================
--- 15. Registrar cambios de categoría
+-- 15. Registrar cambios de categoría (CORREGIDO)
 -- ============================================
 CREATE TRIGGER tr_productos_categoria_update
 BEFORE UPDATE ON productos
 FOR EACH ROW
 BEGIN
     IF OLD.id_categoria <> NEW.id_categoria THEN
-        INSERT INTO log_cambios_precio (id_producto, precio_anterior, precio_nuevo)
+        INSERT INTO log_cambios_categoria (id_producto, categoria_anterior, categoria_nueva)
         VALUES (OLD.id_producto, OLD.id_categoria, NEW.id_categoria);
     END IF;
-END;
+END$$
 
 -- ============================================
 -- 16. Bloquear eliminación de productos con ventas
@@ -235,7 +207,7 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'No se puede eliminar un producto con ventas registradas';
     END IF;
-END;
+END$$
 
 -- ============================================
 -- 17. Registrar cambios de email de clientes
@@ -248,7 +220,7 @@ BEGIN
         INSERT INTO log_clientes (id_cliente, accion)
         VALUES (OLD.id_cliente, 'Email actualizado');
     END IF;
-END;
+END$$
 
 -- ============================================
 -- 18. Registrar cambios de estado de venta
@@ -261,7 +233,7 @@ BEGIN
         INSERT INTO log_ventas (id_venta, accion)
         VALUES (OLD.id_venta, CONCAT('Estado cambiado a ', NEW.estado));
     END IF;
-END;
+END$$
 
 -- ============================================
 -- 19. Validar que el SKU sea único
@@ -274,7 +246,7 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'El SKU ya existe';
     END IF;
-END;
+END$$
 
 -- ============================================
 -- 20. Auditoría de cambios de contraseña
@@ -287,4 +259,6 @@ BEGIN
         INSERT INTO log_clientes (id_cliente, accion)
         VALUES (OLD.id_cliente, 'Contraseña actualizada');
     END IF;
-END;
+END$$
+
+DELIMITER ;
