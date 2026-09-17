@@ -9,6 +9,9 @@ El objetivo es demostrar dominio total de SQL mediante la construcción de una b
 
 ## 🗂️ Diagrama de Base de Datos  
 Aquí va la imagen del diagrama  
+<p align="center">
+  <img src="img/uml.png" width="650">
+</p>
 
 
 ---
